@@ -48,14 +48,17 @@ def check_requirements():
     required_packages = ['wheel', 'twine', 'build']
     missing_packages = []
     
+    # Try pip3 first, then pip
+    pip_cmd = 'pip3' if subprocess.run("which pip3", shell=True, capture_output=True).returncode == 0 else 'pip'
+    
     for package in required_packages:
-        result = subprocess.run(f"pip show {package}", shell=True, capture_output=True)
+        result = subprocess.run(f"{pip_cmd} show {package}", shell=True, capture_output=True)
         if result.returncode != 0:
             missing_packages.append(package)
     
     if missing_packages:
         print(f"❌ Missing packages: {', '.join(missing_packages)}")
-        print("Install with: pip install wheel twine build")
+        print(f"Install with: {pip_cmd} install {' '.join(missing_packages)}")
         return False
     
     print("✅ All required packages are installed")
@@ -82,7 +85,7 @@ def test_local_install():
     wheel_file = dist_files[0]
     
     # Test installation
-    test_cmd = f"pip install {wheel_file} --force-reinstall --quiet"
+    test_cmd = f"pip3 install {wheel_file} --force-reinstall --quiet"
     if not run_command(test_cmd, "Installing package locally"):
         return False
     
@@ -168,7 +171,7 @@ def main():
     
     print("\n🎉 Packaging process completed!")
     print("\nNext steps:")
-    print("1. Test installation: pip install Bharat-sm-data-avinash==4.1.0")
+    print("1. Test installation: pip3 install Bharat-sm-data-avinash==4.1.0")
     print("2. Create GitHub release: https://github.com/avinashsahu/Bharat-SM-Data-Avinash/releases")
     print("3. Update documentation if needed")
 
