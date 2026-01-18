@@ -5,12 +5,12 @@ with open('README.md', 'r', encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name="Bharat_sm_data",
-    version="4.0.1",
+    name="Bharat_sm_data_avinash",
+    version="4.1.0",
     description="Bharat SM Data stands for Bharat(India) Stock Market Data."
                 "\nIt is a Bharat (India) Stock Market Data Fetch Library for all kind of data, Derivatives, Equity "
                 "(both Technical and Fundamentals), Commodities, Currencies from NSE, BSE, MoneyControl and "
-                "Tickertape websites",
+                "Tickertape websites. Now includes NSE Charting API v2 with segment filtering and derivatives support.",
     package_dir={"": "Bharat_sm_data"},
     packages=find_packages(where="Bharat_sm_data"),
     exclude_package_data={
@@ -18,9 +18,9 @@ setup(
     },
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/Sampad-Hegde/Bharat-SM-Data",
-    author="Sampad Hegde",
-    author_email="me@sampadhegde.in",
+    url="https://github.com/avinashsahu/Bharat-SM-Data-Avinash",
+    author="Avinash Sahu (Fork of Sampad Hegde's work)",
+    author_email="avinashsahu@example.com",
     license="Apache License 2.0",
     classifiers=[
         "License :: OSI Approved :: Apache Software License",
@@ -43,6 +43,7 @@ setup(
     },
     python_requires=">=3.7",
     project_urls={
-        "Documentation": "https://bharat-sm-data.readthedocs.io/en/latest/"
+        "Documentation": "https://github.com/avinashsahu/Bharat-SM-Data-Avinash",
+        "Original Project": "https://github.com/Sampad-Hegde/Bharat-SM-Data"
     },
 )

@@ -101,3 +101,33 @@ class CustomSession:
             print(f'Error in connecting to url : {url} Error : {err}')
             return {}
 
+    def post_and_get_data(self, url: str, json_data: dict = None, headers: dict = None) -> dict:
+        """
+            Hitting the api with POST request and gets the data based on the endpoint passed
+
+            :param self: Represent the instance of the class.
+            :param url: Endpoint of the api; aka link of the api
+            :param json_data: (optional) JSON payload to send in POST request body
+            :param headers: (optional) Custom headers for this specific request
+
+            :return: Dict object which is json parsed result of the output response data got from hitting above request
+        """
+
+        try:
+            request_headers = headers if headers else self.headers
+            response = self.session.post(url, json=json_data, headers=request_headers)
+            encoding = response.headers.get('Content-Encoding', '')
+            if encoding == 'br':
+                try:
+                    data = brotli.decompress(response.content).decode("utf-8")
+                except brotli.error:
+                    data = response.content.decode("utf-8")
+            else:
+                data = response.text
+            return json.loads(data)
+        except json.JSONDecodeError:
+            return {}
+        except Exception as err:
+            print(f'Error in connecting to url : {url} Error : {err}')
+            return {}
+

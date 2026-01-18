@@ -24,6 +24,9 @@ class NSEBase(CustomSession):
             get_nse_equity_meta_info(ticker: str) -> dict: Returns the equity meta information for a given ticker.
             get_ohlc_from_charting(ticker: str, timeframe: str, start_date: datetime, end_date: datetime) -> pd.DataFrame: Returns a DataFrame containing the OHLC data for a given ticker and timeframe from new Charting Website of NSE (https://charting.nseindia.com).  
             get_charting_mappings() -> pd.DataFrame: Returns a DataFrame containing the mappings for charting for all Equity and F&O instruments from the new Charting Website of NSE (https://charting.nseindia.com).
+            search_charting_symbol(symbol: str, segment: str = "") -> dict: Searches for a symbol in the new NSE charting API with optional segment filter ("FO", "IDX", "EQ") and returns metadata including scripcode/token.
+            get_charting_historical_data(symbol: str, token: str, symbol_type: str = "Index", chart_type: str = "D", time_interval: int = 1, from_date: int = 0, to_date: int = None) -> pd.DataFrame: Fetches historical OHLC data from the new NSE charting API using token. Supports symbol_type: "Index", "Equity", "Futures", "Options".
+            get_ohlc_from_charting_v2(symbol: str, timeframe: str = "1Day", start_date: datetime = None, end_date: datetime = None, symbol_type: str = "Index", segment: str = "") -> pd.DataFrame: Simplified wrapper to fetch historical data from new NSE charting API with optional segment filter. Supports symbol_type: "Index", "Equity", "Futures", "Options".
     """
 
     def __init__(self):
@@ -52,6 +55,17 @@ class NSEBase(CustomSession):
         
         self._base_url = 'https://www.nseindia.com'
         self._charting_base_url = 'https://charting.nseindia.com'
+        self._charting_headers = {
+            'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Referer': 'https://charting.nseindia.com/',
+            'Content-Type': 'application/json',
+            'Origin': 'https://charting.nseindia.com',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-origin',
+        }
         self.hit_and_get_data(self._base_url)
         self.hit_and_get_data(f'{self._charting_base_url}')
         # This will call the main website and sets cookies into a session object if available
@@ -267,4 +281,177 @@ class NSEBase(CustomSession):
         df = pd.DataFrame()
         for endpoint in url_endpoints:
             df = pd.concat([df, pd.read_csv(StringIO(self.session.get(f'{self._charting_base_url}{endpoint}', headers=self.headers).text), sep='|')], ignore_index=True)
+        return df
+
+    def search_charting_symbol(self, symbol: str, segment: str = "") -> dict:
+        """
+            The search_charting_symbol function searches for a symbol in the new NSE charting API
+            and returns the symbol metadata including scripcode/token needed for historical data.
+
+            :param self: Represent the instance of the class
+            :param symbol: Symbol name to search (e.g., "NIFTY 50", "RELIANCE")
+            :param segment: (optional) Market segment filter - "" (all), "FO" (Futures & Options), "IDX" (Index), "EQ" (Equity)
+
+            :return: Dict containing symbol information with scripcode, instrumentType, exchange, etc.
+            
+            Examples:
+                # Search all segments
+                nse.search_charting_symbol("NIFTY")
+                
+                # Search only indices
+                nse.search_charting_symbol("NIFTY", segment="IDX")
+                
+                # Search only equities
+                nse.search_charting_symbol("RELIANCE", segment="EQ")
+                
+                # Search futures & options
+                nse.search_charting_symbol("NIFTY", segment="FO")
+        """
+        
+        # Validate segment parameter
+        valid_segments = ["", "FO", "IDX", "EQ"]
+        if segment not in valid_segments:
+            raise ValueError(f"Invalid segment '{segment}'. Valid values are: {valid_segments}")
+        
+        payload = {
+            "symbol": symbol,
+            "segment": segment
+        }
+        
+        response = self.post_and_get_data(
+            f'{self._charting_base_url}/v1/exchanges/symbolsDynamic',
+            json_data=payload,
+            headers=self._charting_headers
+        )
+        
+        return response
+
+    def get_charting_historical_data(self, symbol: str, token: str, symbol_type: str = "Index", 
+                                     chart_type: str = "D", time_interval: int = 1,
+                                     from_date: int = 0, to_date: int = None) -> pd.DataFrame:
+        """
+            The get_charting_historical_data function fetches historical OHLC data from the new NSE charting API.
+
+            :param self: Represent the instance of the class
+            :param symbol: Symbol name (e.g., "NIFTY 50", "RELIANCE")
+            :param token: Scripcode/token obtained from search_charting_symbol (e.g., "26000" for NIFTY 50)
+            :param symbol_type: (optional) Type of symbol - "Index", "Equity", "Futures", or "Options" (default: "Index")
+            :param chart_type: (optional) Chart type - "D" (Daily), "I" (Intraday), "W" (Weekly), "M" (Monthly) (default: "D")
+            :param time_interval: (optional) Time interval in minutes for intraday or 1 for daily/weekly/monthly (default: 1)
+            :param from_date: (optional) Start date as Unix timestamp (default: 0 for all available data)
+            :param to_date: (optional) End date as Unix timestamp (default: current time)
+
+            :return: DataFrame containing OHLC data with columns: time, open, high, low, close, volume
+        """
+        
+        # Validate symbol_type
+        valid_symbol_types = ["Index", "Equity", "Futures", "Options"]
+        if symbol_type not in valid_symbol_types:
+            raise ValueError(f"Invalid symbol_type '{symbol_type}'. Valid values are: {valid_symbol_types}")
+        
+        if to_date is None:
+            to_date = int(datetime.now().timestamp())
+        
+        payload = {
+            "token": str(token),
+            "fromDate": from_date,
+            "toDate": to_date,
+            "symbol": symbol,
+            "symbolType": symbol_type,
+            "chartType": chart_type,
+            "timeInterval": time_interval
+        }
+        
+        response = self.post_and_get_data(
+            f'{self._charting_base_url}/v1/charts/symbolHistoricalData',
+            json_data=payload,
+            headers=self._charting_headers
+        )
+        
+        if response.get('status') and response.get('data'):
+            df = pd.DataFrame(response['data'])
+            if not df.empty:
+                df['time'] = pd.to_datetime(df['time'], unit='ms')
+                df = df[['time', 'open', 'high', 'low', 'close', 'volume']]
+            return df
+        else:
+            return pd.DataFrame()
+
+    def get_ohlc_from_charting_v2(self, symbol: str, timeframe: str = "1Day", 
+                                   start_date: datetime = None, end_date: datetime = None,
+                                   symbol_type: str = "Index", segment: str = "") -> pd.DataFrame:
+        """
+            The get_ohlc_from_charting_v2 function is a simplified wrapper that fetches historical data
+            from the new NSE charting API. It automatically searches for the symbol and fetches data.
+
+            :param self: Represent the instance of the class
+            :param symbol: Symbol name (e.g., "NIFTY 50", "RELIANCE")
+            :param timeframe: (optional) Timeframe - "1Min", "5Min", "15Min", "30Min", "60Min", "1Day", "1Week", "1Month" (default: "1Day")
+            :param start_date: (optional) Start date as datetime object (default: beginning of available data)
+            :param end_date: (optional) End date as datetime object (default: current time)
+            :param symbol_type: (optional) Type of symbol - "Index", "Equity", "Futures", or "Options" (default: "Index")
+            :param segment: (optional) Market segment filter - "" (all), "FO" (Futures & Options), "IDX" (Index), "EQ" (Equity) (default: "")
+
+            :return: DataFrame containing OHLC data with columns: time, open, high, low, close, volume
+            
+            Examples:
+                # Get daily data for NIFTY 50 (Index)
+                nse.get_ohlc_from_charting_v2("NIFTY 50", "1Day", symbol_type="Index", segment="IDX")
+                
+                # Get equity data with segment filter
+                nse.get_ohlc_from_charting_v2("RELIANCE", "1Day", symbol_type="Equity", segment="EQ")
+                
+                # Get futures data
+                nse.get_ohlc_from_charting_v2("NIFTY 25JAN2024 FUT", "1Day", symbol_type="Futures", segment="FO")
+                
+                # Get options data
+                nse.get_ohlc_from_charting_v2("NIFTY 25JAN2024 23500 CE", "1Day", symbol_type="Options", segment="FO")
+        """
+        
+        # Validate symbol_type
+        valid_symbol_types = ["Index", "Equity", "Futures", "Options"]
+        if symbol_type not in valid_symbol_types:
+            raise ValueError(f"Invalid symbol_type '{symbol_type}'. Valid values are: {valid_symbol_types}")
+        
+        time_mappings = {
+            '1Min': ('I', 1),
+            '5Min': ('I', 5),
+            '15Min': ('I', 15),
+            '30Min': ('I', 30),
+            '60Min': ('I', 60),
+            '1Day': ('D', 1),
+            '1Week': ('W', 1),
+            '1Month': ('M', 1),
+        }
+        
+        if timeframe not in time_mappings:
+            raise ValueError(f"Unsupported timeframe: {timeframe}; supported timeframes are {list(time_mappings.keys())}")
+        
+        chart_type, time_interval = time_mappings[timeframe]
+        
+        # Search for symbol to get token (with segment filter)
+        search_result = self.search_charting_symbol(symbol, segment=segment)
+        
+        if not search_result.get('status') or not search_result.get('data'):
+            raise ValueError(f"Symbol '{symbol}' not found in charting API" + (f" for segment '{segment}'" if segment else ""))
+        
+        # Get the first matching symbol's token
+        symbol_data = search_result['data'][0]
+        token = symbol_data['scripcode']
+        
+        # Convert dates to timestamps
+        from_timestamp = 0 if start_date is None else int(start_date.timestamp())
+        to_timestamp = int(datetime.now().timestamp()) if end_date is None else int(end_date.timestamp())
+        
+        # Fetch historical data
+        df = self.get_charting_historical_data(
+            symbol=symbol,
+            token=token,
+            symbol_type=symbol_type,
+            chart_type=chart_type,
+            time_interval=time_interval,
+            from_date=from_timestamp,
+            to_date=to_timestamp
+        )
+        
         return df

@@ -1,14 +1,67 @@
-# Bharat (India) Stock Market Data Collection / Fetch Library
+# Bharat (India) Stock Market Data Collection / Fetch Library - Avinash's Fork
 
 Bharat_SM_Data stands for Bharat(India) Stock Market Data.
 
+**This is a fork of the original project by Sampad Hegde with additional NSE Charting API v2 features.**
+
 ```shell
-pip install Bharat-sm-data
+pip install Bharat-sm-data-avinash
 ```
 
 <p align="center">
-  <img src="https://github.com/Sampad-Hegde/Bharat-SM-Data/raw/master/Logo.png" alt="Logo" width="500" height="400">
+  <img src="https://github.com/avinashsahu/Bharat-SM-Data-Avinash/raw/master/Logo.png" alt="Logo" width="500" height="400">
 </p>
+
+## 🆕 What's New in This Fork (v4.1.0)
+
+### NSE Charting API v2 Support
+- **Dynamic Symbol Search** with segment filtering
+- **Support for All Instruments**: Index, Equity, Futures, Options
+- **Segment Filters**: IDX (Index), EQ (Equity), FO (Futures & Options)
+- **Multiple Timeframes**: 1Min to 1Month
+- **Enhanced Error Handling** and input validation
+- **No Mapping Files Required** - everything is dynamic
+
+### Quick Example
+```python
+from Bharat_sm_data.Base.NSEBase import NSEBase
+from datetime import datetime, timedelta
+
+nse = NSEBase()
+
+# Get NIFTY 50 data with new API
+df = nse.get_ohlc_from_charting_v2(
+    symbol="NIFTY 50",
+    timeframe="1Day",
+    start_date=datetime.now() - timedelta(days=30),
+    symbol_type="Index",
+    segment="IDX"  # Filter to indices only
+)
+
+# Search with segment filtering
+result = nse.search_charting_symbol("RELIANCE", segment="EQ")  # Equity only
+
+# Get futures data
+fo_result = nse.search_charting_symbol("NIFTY", segment="FO")  # F&O only
+```
+
+## Original Project
+
+This fork is based on the excellent work by **Sampad Hegde**:
+- Original Repository: https://github.com/Sampad-Hegde/Bharat-SM-Data
+- Original Documentation: https://bharat-sm-data.readthedocs.io/en/latest/
+
+## Installation
+
+### Install This Fork
+```bash
+pip install Bharat-sm-data-avinash
+```
+
+### Install Original Package
+```bash
+pip install Bharat-sm-data
+```
 
 ## !!! Disclaimer !!!
 **Disclaimer: Use Caution and Consider Legal Implications**
@@ -65,12 +118,52 @@ pip install Bharat-sm-data
 
 ### Read the Documentation here: [Readthedoc](https://bharat-sm-data.readthedocs.io/en/latest/index.html)
 
+### Quick Start - NSE Charting API v2 (NEW in v4.1.0)
+
+```python
+from Bharat_sm_data.Base.NSEBase import NSEBase
+from datetime import datetime, timedelta
+
+# Initialize
+nse = NSEBase()
+
+# Get historical data for NIFTY 50
+df = nse.get_ohlc_from_charting_v2(
+    symbol="NIFTY 50",
+    timeframe="1Day",
+    start_date=datetime.now() - timedelta(days=30),
+    end_date=datetime.now(),
+    symbol_type="Index",
+    segment="IDX"  # Filter to indices only
+)
+
+# Search for symbols with filtering
+result = nse.search_charting_symbol("RELIANCE", segment="EQ")  # Equity only
+
+# Get futures data
+result = nse.search_charting_symbol("NIFTY", segment="FO")  # F&O only
+futures = [s for s in result['data'] if 'FUT' in s['symbol']]
+df_futures = nse.get_ohlc_from_charting_v2(
+    symbol=futures[0]['symbol'],
+    timeframe="1Day",
+    symbol_type="Futures",
+    segment="FO"
+)
+```
+
+### Example Notebooks
+
 Refer below example Jupyter Notebooks to get know how to use this library :
-- [NSE Technical](https://github.com/Sampad-Hegde/Bharat-SM-Data/blob/master/examples/Technical_NSE.ipynb)
-- [NSE Derivatives](https://github.com/Sampad-Hegde/Bharat-SM-Data/blob/master/examples/Derivatives_NSE.ipynb)
-- [Sensibull  Derivatives](https://github.com/Sampad-Hegde/Bharat-SM-Data/blob/master/examples/Derivatives_Sensibull.ipynb)
-- [Tickertape Fundamentals](https://github.com/Sampad-Hegde/Bharat-SM-Data/blob/master/examples/Fundementals_Tickertape.ipynb)
-- [Moneycontrol Fundamentals](https://github.com/Sampad-Hegde/Bharat-SM-Data/blob/master/examples/Fundementals_Moneycontrol.ipynb)
+- [NSE Technical](https://github.com/avinashsahu/Bharat-SM-Data-Avinash/blob/master/examples/Technical_NSE.ipynb)
+- [NSE Derivatives](https://github.com/avinashsahu/Bharat-SM-Data-Avinash/blob/master/examples/Derivatives_NSE.ipynb)
+- [Sensibull  Derivatives](https://github.com/avinashsahu/Bharat-SM-Data-Avinash/blob/master/examples/Derivatives_Sensibull.ipynb)
+- [Tickertape Fundamentals](https://github.com/avinashsahu/Bharat-SM-Data-Avinash/blob/master/examples/Fundementals_Tickertape.ipynb)
+- [Moneycontrol Fundamentals](https://github.com/avinashsahu/Bharat-SM-Data-Avinash/blob/master/examples/Fundementals_Moneycontrol.ipynb)
+
+### New API v2 Examples
+- [Charting API v2 Examples](https://github.com/avinashsahu/Bharat-SM-Data-Avinash/blob/master/USAGE_EXAMPLE.py)
+- [Segment Filtering Examples](https://github.com/avinashsahu/Bharat-SM-Data-Avinash/blob/master/SEGMENT_FILTERING_EXAMPLES.py)
+- [Derivatives Examples](https://github.com/avinashsahu/Bharat-SM-Data-Avinash/blob/master/DERIVATIVES_EXAMPLES.py)
  
 
 ## Features
@@ -81,6 +174,15 @@ Refer below example Jupyter Notebooks to get know how to use this library :
   - Equity Meta data
   - NSE turn-over for the day
   - OHLC data
+
+- **NEW: NSE Charting API v2** (Added in v4.1.0):
+  - Dynamic symbol search with segment filtering
+  - Historical OHLC data for all instrument types
+  - Support for Index, Equity, Futures, and Options
+  - Multiple timeframes (1Min to 1Month)
+  - Segment filters: IDX (Index), EQ (Equity), FO (Futures & Options)
+  - No mapping files required
+  - Faster and more accurate data fetching
 
 - Technical Data:
   - Important NSE Reports   
@@ -147,18 +249,26 @@ Refer below example Jupyter Notebooks to get know how to use this library :
 ## License
 
 This project is licensed under the Apache License.
-See the [LICENSE](https://github.com/Sampad-Hegde/Bharat-SM-Data/blob/master/LICENSE) for more details.
+See the [LICENSE](https://github.com/avinashsahu/Bharat-SM-Data-Avinash/blob/master/LICENSE) for more details.
 
 ## Acknowledgments
+- **Original Author**: Sampad Hegde (https://github.com/Sampad-Hegde/Bharat-SM-Data)
 - Pandas
 - Requests
-- All the websites I used for collecting data
+- All the websites used for collecting data
 - pydash
 - BS4
 
 ## Contact
-Connect Me over: 
+
+### Fork Maintainer
+- **Avinash Sahu**
+- GitHub: [avinashsahu](https://github.com/avinashsahu)
+- Repository: [Bharat-SM-Data-Avinash](https://github.com/avinashsahu/Bharat-SM-Data-Avinash)
+
+### Original Author
+- **Sampad Hegde**
 - Email: [me@sampadhegde.in | sampadhegde@gmail.com]
-- LinkedIn [sampad-hegde](https://www.linkedin.com/in/sampad-hegde)
-- Instagram [@sampad_hegde](https://www.instagram.com/sampad_hegde)
-- Facebook [sampad.hegde](https://www.facebook.com/sampad.hegde)
+- LinkedIn: [sampad-hegde](https://www.linkedin.com/in/sampad-hegde)
+- Instagram: [@sampad_hegde](https://www.instagram.com/sampad_hegde)
+- Facebook: [sampad.hegde](https://www.facebook.com/sampad.hegde)

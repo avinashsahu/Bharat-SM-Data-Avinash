@@ -1,4 +1,4 @@
-Metadata-Version: 2.2
+Metadata-Version: 2.4
 Name: Bharat_sm_data
 Version: 4.0.1
 Summary: Bharat SM Data stands for Bharat(India) Stock Market Data.
@@ -30,6 +30,7 @@ Dynamic: description
 Dynamic: description-content-type
 Dynamic: home-page
 Dynamic: license
+Dynamic: license-file
 Dynamic: project-url
 Dynamic: provides-extra
 Dynamic: requires-dist

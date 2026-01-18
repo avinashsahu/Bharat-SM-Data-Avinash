@@ -9,7 +9,6 @@ pip install wheel twine
 python setup.py sdist bdist_wheel
 ```
 
-
 # Twine test files and formats
 ```shell
 twine check dist/*
@@ -17,17 +16,19 @@ twine check dist/*
 
 # To publish to test-PYPI:
 ```shell
-twine upload -r testpypi dist/Bharat_sm_data-<version>*
+twine upload -r testpypi dist/Bharat_sm_data_avinash-<version>*
 ```
 
 # Testing Test-pypi package
 
 ```shell
- pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple Bharat-sm-data=={version}
+ pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple Bharat-sm-data-avinash=={version}
 ```
-
 
 # To publish to PYPI:
 ```shell
-twine upload dist/Bharat_sm_data-<version>*
+twine upload dist/Bharat_sm_data_avinash-<version>*
 ```
+
+# Package name on PyPI will be: Bharat-sm-data-avinash
+# Install command: pip install Bharat-sm-data-avinash

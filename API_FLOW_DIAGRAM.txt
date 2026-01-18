@@ -1,0 +1,226 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    NSE CHARTING API v2 - REQUEST FLOW                        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         METHOD 1: SIMPLE (RECOMMENDED)                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    User Code
+       │
+       │  nse.get_ohlc_from_charting_v2("NIFTY 50", "1Day", ...)
+       │
+       ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  get_ohlc_from_charting_v2()                                │
+  │  • Validates timeframe                                       │
+  │  • Converts to chart_type & time_interval                   │
+  └─────────────────────────────────────────────────────────────┘
+       │
+       │  Calls search_charting_symbol()
+       ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  search_charting_symbol()                                    │
+  │  POST /v1/exchanges/symbolsDynamic                          │
+  │  Payload: {"symbol": "NIFTY 50", "segment": ""}            │
+  └─────────────────────────────────────────────────────────────┘
+       │
+       │  Returns: {"status": true, "data": [{"scripcode": "26000", ...}]}
+       ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  Extract token (scripcode)                                   │
+  │  token = "26000"                                            │
+  └─────────────────────────────────────────────────────────────┘
+       │
+       │  Calls get_charting_historical_data()
+       ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  get_charting_historical_data()                             │
+  │  POST /v1/charts/symbolHistoricalData                       │
+  │  Payload: {                                                 │
+  │    "token": "26000",                                        │
+  │    "symbol": "NIFTY 50",                                    │
+  │    "symbolType": "Index",                                   │
+  │    "chartType": "D",                                        │
+  │    "timeInterval": 1,                                       │
+  │    "fromDate": 1234567890,                                  │
+  │    "toDate": 1234567890                                     │
+  │  }                                                          │
+  └─────────────────────────────────────────────────────────────┘
+       │
+       │  Returns: {"status": true, "data": [{time, open, high, low, close, volume}, ...]}
+       ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  Convert to DataFrame                                        │
+  │  • Parse timestamps (ms → datetime)                         │
+  │  • Structure columns                                        │
+  └─────────────────────────────────────────────────────────────┘
+       │
+       │  Returns DataFrame
+       ▼
+    User Code
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    METHOD 2: ADVANCED (WITH TOKEN CACHING)                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    User Code
+       │
+       │  Step 1: Search once
+       │  result = nse.search_charting_symbol("NIFTY 50")
+       │
+       ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  POST /v1/exchanges/symbolsDynamic                          │
+  │  Returns token: "26000"                                     │
+  └─────────────────────────────────────────────────────────────┘
+       │
+       │  Step 2: Cache token
+       │  token = "26000"
+       │
+       │  Step 3: Use token directly (multiple times)
+       │  df = nse.get_charting_historical_data(..., token="26000", ...)
+       │
+       ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  POST /v1/charts/symbolHistoricalData                       │
+  │  (No search needed - faster!)                               │
+  └─────────────────────────────────────────────────────────────┘
+       │
+       ▼
+    User Code
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           UNDERLYING HTTP FLOW                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Browser/Client                    NSE Charting Server
+     │                                    │
+     │  1. GET https://charting.nseindia.com
+     │────────────────────────────────────>│
+     │                                    │ Set cookies
+     │  <────────────────────────────────│ (session, _abck, bm_sv, etc.)
+     │                                    │
+     │  2. POST /mb2HgJ135/.../JlQWAB    │
+     │     (Anti-bot sensor data)         │
+     │────────────────────────────────────>│
+     │                                    │ Validate
+     │  <────────────────────────────────│ {"success": true}
+     │                                    │
+     │  3. POST /v1/exchanges/symbolsDynamic
+     │     {"symbol": "NIFTY 50"}         │
+     │────────────────────────────────────>│
+     │                                    │ Search
+     │  <────────────────────────────────│ {"data": [{"scripcode": "26000"}]}
+     │                                    │
+     │  4. POST /v1/charts/symbolHistoricalData
+     │     {"token": "26000", ...}        │
+     │────────────────────────────────────>│
+     │                                    │ Fetch data
+     │  <────────────────────────────────│ {"data": [{OHLC}, ...]}
+     │                                    │
+     │  5. POST /mb2HgJ135/.../JlQWAB    │
+     │     (Periodic sensor data)         │
+     │────────────────────────────────────>│
+     │                                    │ Maintain session
+     │  <────────────────────────────────│ {"success": true}
+     │                                    │
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         TIMEFRAME CONVERSION TABLE                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+User Input    →    chart_type    time_interval    Description
+─────────────────────────────────────────────────────────────────────────────
+"1Min"        →        "I"             1          1-minute intraday
+"5Min"        →        "I"             5          5-minute intraday
+"15Min"       →        "I"            15          15-minute intraday
+"30Min"       →        "I"            30          30-minute intraday
+"60Min"       →        "I"            60          1-hour intraday
+"1Day"        →        "D"             1          Daily
+"1Week"       →        "W"             1          Weekly
+"1Month"      →        "M"             1          Monthly
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            SESSION MANAGEMENT                                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────┐
+│  NSEBase.__init__()                                          │
+│  • Creates session with retry logic                         │
+│  • Sets headers                                             │
+│  • Visits base URLs to establish cookies:                   │
+│    - https://www.nseindia.com                               │
+│    - https://charting.nseindia.com                          │
+└─────────────────────────────────────────────────────────────┘
+                           │
+                           │  Session established
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  All subsequent requests use this session                    │
+│  • Cookies automatically included                           │
+│  • Anti-bot protection handled transparently                │
+│  • No manual cookie management needed                       │
+└─────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          ERROR HANDLING FLOW                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+User calls method
+       │
+       ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  Validate timeframe                                          │
+  │  ✗ Invalid → raise ValueError                               │
+  └─────────────────────────────────────────────────────────────┘
+       │
+       ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  Search symbol                                               │
+  │  ✗ Not found → raise ValueError                             │
+  │  ✗ Network error → return {}                                │
+  └─────────────────────────────────────────────────────────────┘
+       │
+       ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  Fetch historical data                                       │
+  │  ✗ No data → return empty DataFrame                         │
+  │  ✗ Network error → return empty DataFrame                   │
+  └─────────────────────────────────────────────────────────────┘
+       │
+       ▼
+  Return DataFrame to user
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        PERFORMANCE OPTIMIZATION                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Scenario 1: Single Symbol Fetch
+────────────────────────────────────────────────────────────────
+Use: get_ohlc_from_charting_v2()
+Time: ~2-3 seconds
+Memory: Low
+
+Scenario 2: Multiple Symbols (10+)
+────────────────────────────────────────────────────────────────
+Use: search_charting_symbol() + cache tokens + get_charting_historical_data()
+Time: ~2s (search) + ~2s per symbol (fetch)
+Memory: Low
+
+Scenario 3: Repeated Fetches (Same Symbol)
+────────────────────────────────────────────────────────────────
+Use: Cache token, use get_charting_historical_data()
+Time: ~2s per fetch (no search overhead)
+Memory: Minimal
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                              END OF DIAGRAM
+═══════════════════════════════════════════════════════════════════════════════
